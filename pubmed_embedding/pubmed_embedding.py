@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Optional, Union, List
 from tqdm.auto import tqdm
 import pandas as pd
 import numpy as np
@@ -9,7 +9,7 @@ def get_pubmed_embedding_from_curies(
     curies: Union[List[str], str],
     ignore_missing_curies: bool = True,
     check_for_prefix: bool = True,
-    downloads_directory: str = "embeddings",
+    downloads_directory: Optional[str] = None,
     version: str = "pubmed_scibert_30_11_2022",
 ) -> pd.DataFrame:
     """Returns dataframe with curies as index and embedding from required version.
@@ -31,11 +31,11 @@ def get_pubmed_embedding_from_curies(
     """
     index: pd.DataFrame = get_index(
         version=version,
-        downloads_directory=downloads_directory
+        downloads_directory=downloads_directory,
     )
     
     if isinstance(curies, str):
-        curies: List[str] = [curies]
+        curies = [curies]
 
     # Checking presence of prefix
     if check_for_prefix:
@@ -61,7 +61,7 @@ def get_pubmed_embedding_from_curies(
     
     curie_ids: np.ndarray = index.loc[curies].curie_id.values
 
-    download_chunks_from_curie_ids(curie_ids, version, downloads_directory)
+    download_chunks_from_curie_ids(curie_ids, version, downloads_directory=downloads_directory)
 
     return pd.DataFrame(
         np.array([

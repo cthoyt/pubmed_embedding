@@ -1,10 +1,11 @@
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Optional, Set, Tuple
 import os
 import numpy as np
 import pandas as pd
 from downloaders import BaseDownloader
 from userinput.utils import must_be_in_set
 import compress_json
+import pystow
 
 
 def get_versions() -> List[str]:
@@ -32,7 +33,8 @@ def get_metadata(
 
 def get_index(
     version: str,
-    downloads_directory: str
+    *,
+    downloads_directory: Optional[str] = None
 ) -> pd.DataFrame:
     """Returns pandas DataFrame with index.
 
@@ -44,6 +46,8 @@ def get_index(
         The directory where to store the downloads
     """
     url = get_metadata(version)["index"]
+    if downloads_directory is None:
+        downloads_directory = pystow.join("pubmed", "embeddings")
     index_path = f"{downloads_directory}/{version}/{version}_index.csv.gz"
     BaseDownloader(auto_extract=False).download(urls=url, paths=index_path)
     df = pd.read_csv(index_path, header=None)
@@ -139,7 +143,8 @@ def get_unique_urls_from_curie_ids(
 def get_embedding_chunk_path_from_curie_id(
     curie_id: int,
     version: str,
-    downloads_directory: str
+    *,
+    downloads_directory: Optional[str] = None,
 ) -> str:
     """Return path to embedding from given curie ID.
 
@@ -153,13 +158,16 @@ def get_embedding_chunk_path_from_curie_id(
         The directory where to store the downloads.
     """
     chunk_id = get_chunk_id_from_curie_id(curie_id, version)
+    if downloads_directory is None:
+        downloads_directory = pystow.join("pubmed", "embeddings")
     return f"{downloads_directory}/{version}/{chunk_id}.npy"
 
 
 def download_chunks_from_curie_ids(
     curie_ids: np.ndarray,
     version: str,
-    downloads_directory: str
+    *,
+    downloads_directory: Optional[str] = None,
 ):
     """Downloads embedding chunks for provided curie IDs.
 
@@ -173,12 +181,16 @@ def download_chunks_from_curie_ids(
         The directory where to store the downloads.
     """
     urls, chunk_ids = get_unique_urls_from_curie_ids(curie_ids, version)
+    if downloads_directory is None:
+        downloads_directory = pystow.join("pubmed", "embeddings")
     BaseDownloader(
         process_number=1
     ).download(
         urls=urls,
         paths=[
-            f"{downloads_directory}/{version}/{chunk_id}.npy" for chunk_id in chunk_ids]
+            f"{downloads_directory}/{version}/{chunk_id}.npy"
+            for chunk_id in chunk_ids
+        ],
     )
 
 
@@ -188,7 +200,8 @@ embeddings: Dict[str, np.ndarray] = dict()
 def get_embedding_from_curie_id(
     curie_id: int,
     version: str,
-    downloads_directory: str
+    *,
+    downloads_directory: Optional[str] = None,
 ) -> np.ndarray:
     """Return embedding chunk for provided curie ID.
 
@@ -203,7 +216,7 @@ def get_embedding_from_curie_id(
     """
     global embeddings
     path = get_embedding_chunk_path_from_curie_id(
-        curie_id, version, downloads_directory)
+        curie_id, version, downloads_directory=downloads_directory)
     if path not in embeddings:
         embeddings[path] = np.load(path, mmap_mode="r+")
     return embeddings[path]
@@ -212,7 +225,8 @@ def get_embedding_from_curie_id(
 def get_vector_from_curie_id(
     curie_id: int,
     version: str,
-    downloads_directory: str
+    *,
+    downloads_directory: Optional[str] = None,
 ) -> np.ndarray:
     """Return embedding chunk for provided curie ID.
 
@@ -228,7 +242,7 @@ def get_vector_from_curie_id(
     return get_embedding_from_curie_id(
         curie_id,
         version,
-        downloads_directory
+        downloads_directory=downloads_directory,
     )[restrict_curie_id_to_chunk(curie_id, version)]
 
 
